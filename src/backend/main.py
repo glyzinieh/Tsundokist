@@ -1,35 +1,61 @@
-import os
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
+from fastapi_users import FastAPIUsers
 
-from .auth import fastapi_users, auth_backend
-from .database import init_db
-from .env import load_env
-from .routes import books
-
-load_env()
+from .auth import auth_backend, get_user_manager
+from .database import create_db_and_tables
+from .models import User
+from .schemas import UserCreate, UserRead, UserUpdate
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    create_db_and_tables()
     yield
+    pass
 
 
-app = FastAPI(lifespan=lifespan)
-
-# admin = Admin(app, engine)
+app = FastAPI()
 
 
-@app.middleware("http")
-async def maintenance_mode(request: Request, call_next):
-    if os.getenv("MAINTENANCE_MODE", "False") == "True":
-        return JSONResponse(status_code=503, content={"message": "Maintenance mode"})
-    return await call_next(request)
+fastapi_users = FastAPIUsers[User, uuid.UUID](
+    get_user_manager,
+    [auth_backend],
+)
+
+# Add basic routers for authentication
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+app.include_router(
+    fastapi_users.get_reset_password_router(),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+# Add routers returning user information.
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
 
 
-app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth", tags=["Auth"])
-
-app.include_router(books.router, prefix="/books", tags=["Books"])
+# app.include_router(users.router, prefix="/users", tags=["users"])

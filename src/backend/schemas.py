@@ -1,25 +1,18 @@
+import uuid
+
 from fastapi_users import schemas
-from pydantic import BaseModel
+
+
+class UserRead(schemas.BaseUser[uuid.UUID]):
+    name: str
+    role: str
 
 
 class UserCreate(schemas.BaseUserCreate):
-    email: str
+    name: str
     role: str
 
 
-class UserRead(schemas.BaseUser[str]):
-    email: str
+class UserUpdate(schemas.BaseUserUpdate):
+    name: str
     role: str
-
-
-class BookCreate(BaseModel):
-    isbn: str
-    title: str
-    author: str
-
-
-class BookRead(BaseModel):
-    id: int
-    isbn: str
-    title: str
-    author: str
