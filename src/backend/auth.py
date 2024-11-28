@@ -117,6 +117,14 @@ def refresh_token(token: str, session: SessionDep):
 
     return access_token, refresh_token
 
+def revoke_token(token: str, session: SessionDep):
+    token_db = session.exec(select(RefreshToken).where(RefreshToken.token == token)).first()
+    if not token_db:
+        raise HTTPException(status_code=400, detail="Invalid refresh token")
+    session.delete(token_db)
+    session.commit()
+    return True
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme), session: SessionDep = SessionDep()

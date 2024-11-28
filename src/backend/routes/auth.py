@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..auth import authenticate_user, create_tokens, refresh_token
+from ..auth import (authenticate_user, create_tokens, refresh_token,
+                    revoke_token)
 from ..database import SessionDep
 
 router = APIRouter()
@@ -23,10 +24,17 @@ def login(session: SessionDep, form_data: OAuth2PasswordRequestForm = Depends())
 
 
 @router.post("/refresh")
-def refresh(session: SessionDep, refresh_token: str = Annotated[str, "refresh_token"]):
-    access_token, refresh_token = refresh_token(refresh_token, session)
+def refresh(session: SessionDep, rtoken: str = Annotated[str, "refresh_token"]):
+    atoken, rtoken = refresh_token(rtoken, session)
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "access_token": atoken,
+        "refresh_token": rtoken,
         "token_type": "bearer",
     }
+
+
+@router.post("/revoke")
+def revoke(session: SessionDep, refresh_token: str = Annotated[str, "refresh_token"]):
+    if not revoke_token(refresh_token, session):
+        raise HTTPException(status_code=400, detail="Invalid refresh token")
+    return {"detail": "Token revoked"}
