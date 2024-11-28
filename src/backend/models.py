@@ -1,13 +1,21 @@
-from fastapi_users import models
-from fastapi_users_db_sqlmodel import SQLModelBaseUserDB
-from fastapi_users_db_sqlmodel.access_token import SQLModelBaseAccessToken
+from datetime import datetime, timezone
+
+from sqlmodel import Field, SQLModel
 
 
-
-class User(SQLModelBaseUserDB, table=True):
+class UserBase(SQLModel):
+    email: str = Field(index=True, unique=True)
     name: str
-    role: str
 
 
-class AccessToken(SQLModelBaseAccessToken, table=True):
-    pass
+class User(UserBase, table=True):
+    id: int = Field(default=None, primary_key=True)
+    hashed_password: str
+    role: str = "user"
+
+
+class Token(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    token: str
+    created_at: datetime = Field(default=datetime.now(timezone.utc))

@@ -1,18 +1,15 @@
-import uuid
+from .models import UserBase
 
-from fastapi_users import schemas
-
-
-class UserRead(schemas.BaseUser[uuid.UUID]):
-    name: str
+class UserPublic(UserBase):
+    id: int
     role: str
 
 
-class UserCreate(schemas.BaseUserCreate):
-    name: str
-    role: str
+class UserCreate(UserBase):
+    password: str
 
 
-class UserUpdate(schemas.BaseUserUpdate):
-    name: str
-    role: str
+class UserUpdate(UserBase):
+    email: str | None = None
+    username: str | None = None
+    password: str | None = None
