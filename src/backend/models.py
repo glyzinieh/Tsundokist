@@ -11,11 +11,13 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     id: int = Field(default=None, primary_key=True)
     hashed_password: str
+    is_verified: bool = False
     role: str = "user"
 
 
-class Token(SQLModel, table=True):
+class RefreshToken(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     token: str
-    created_at: datetime = Field(default=datetime.now(timezone.utc))
+    created_at: datetime
+    expires_at: datetime

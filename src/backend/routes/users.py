@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from sqlmodel import Session
 
-from ..auth import get_password_hash, oauth2_scheme
-from ..database import SessionDep
+from ..auth import get_current_user, get_password_hash
+from ..database import SessionDep, get_session
 from ..models import User
 from ..schemas import UserCreate, UserPublic, UserUpdate
 
@@ -9,7 +10,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=UserPublic)
-def create_user(user: UserCreate, session: SessionDep):
+def create_user(user: UserCreate, session: SessionDep = SessionDep()):
     user = UserCreate.model_validate(user)
     hashed_password = get_password_hash(user.password)
     db_user = User(**user.model_dump(), hashed_password=hashed_password)
@@ -19,36 +20,32 @@ def create_user(user: UserCreate, session: SessionDep):
     return db_user
 
 
-@router.get("/{user_id}", response_model=UserPublic)
-def read_user(
-    user_id: int, session: SessionDep, token: str = Depends(oauth2_scheme)
-) -> User:
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+@router.get("/me", response_model=UserPublic)
+def read_user_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
-@router.patch("/{user_id}", response_model=UserPublic)
-def update_user(user_id: int, user: UserUpdate, session: SessionDep, token: str = Depends(oauth2_scheme)):
-    user_db = session.get(User, user_id)
-    if not user_db:
-        raise HTTPException(status_code=404, detail="User not found")
+@router.patch("/me", response_model=UserPublic)
+def update_user_me(
+    user: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    session: SessionDep = SessionDep(),
+):
     user_data = user.model_dump(exclude_unset=True)
     if "password" in user_data:
         user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
-    user_db.sqlmodel_update(user_data)
-    session.add(user_db)
+    current_user.sqlmodel_update(user_data)
+    session.add(current_user)
     session.commit()
-    session.refresh(user_db)
-    return user_db
+    session.refresh(current_user)
+    return current_user
 
 
-@router.delete("/{user_id}")
-def delete_user(user_id: int, session: SessionDep, token: str = Depends(oauth2_scheme)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    session.delete(user)
+@router.delete("/me", response_model=UserPublic)
+def delete_user_me(
+    current_user: User = Depends(get_current_user),
+    session: SessionDep = SessionDep(),
+):
+    session.delete(current_user)
     session.commit()
-    return user
+    return current_user
