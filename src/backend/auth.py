@@ -5,9 +5,9 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from .database import SessionDep, get_session
+from .database import SessionDep
 from .models import RefreshToken, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -88,7 +88,7 @@ def create_tokens(user: User, session: SessionDep):
     return access_token, refresh_token
 
 
-def refresh_token(token: str, session: SessionDep):
+def refresh_tokens(token: str, session: SessionDep):
     old_token_db = session.exec(
         select(RefreshToken).where(RefreshToken.token == token)
     ).first()

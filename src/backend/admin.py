@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from starlette.requests import Request
 
 from .auth import (authenticate_user, create_tokens, get_user,
-                   verify_access_token)
+                   verify_access_token, refresh_tokens)
 from .database import get_session
 from .models import RefreshToken, User
 
@@ -47,10 +47,28 @@ class AdminAuth(AuthenticationBackend):
         if not access_token:
             return False
         email = verify_access_token(access_token)
+        if not email:
+            if not await self.refresh(request):
+                return False
+            access_token = request.session.get("access_token")
+            email = verify_access_token(access_token)
+            if not email:
+                return False
         with next(get_session()) as session:
             user = get_user(email, session)
             if not user or user.role != "admin":
                 return False
+        return True
+
+    async def refresh(self, request: Request) -> bool:
+        refresh_token = request.session.get("refresh_token")
+        if not refresh_token:
+            return False
+        with next(get_session()) as session:
+            new_access_token, new_refresh_token = refresh_tokens(refresh_token, session)
+            if not new_access_token or not new_refresh_token:
+                return False
+            request.session.update({"access_token": new_access_token, "refresh_token": new_refresh_token})
         return True
 
 

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..auth import (authenticate_user, create_tokens, refresh_token,
+from ..auth import (authenticate_user, create_tokens, refresh_tokens,
                     revoke_token)
 from ..database import SessionDep
 
@@ -25,7 +25,7 @@ def login(session: SessionDep, form_data: OAuth2PasswordRequestForm = Depends())
 
 @router.post("/refresh")
 def refresh(session: SessionDep, rtoken: str = Annotated[str, "refresh_token"]):
-    atoken, rtoken = refresh_token(rtoken, session)
+    atoken, rtoken = refresh_tokens(rtoken, session)
     return {
         "access_token": atoken,
         "refresh_token": rtoken,
