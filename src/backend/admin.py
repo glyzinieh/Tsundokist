@@ -1,14 +1,12 @@
 import os
-from contextlib import contextmanager
 
-from fastapi import HTTPException
 from sqladmin import ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqlmodel import Session, select
+from sqlmodel import select
 from starlette.requests import Request
 
-from .auth import (authenticate_user, create_tokens, get_user,
-                   verify_access_token, refresh_tokens)
+from .auth import (authenticate_user, create_tokens, get_user, refresh_tokens,
+                   verify_access_token)
 from .database import get_session
 from .models import RefreshToken, User
 
@@ -29,17 +27,17 @@ class AdminAuth(AuthenticationBackend):
 
     async def logout(self, request: Request) -> None:
         refresh_token = request.session.get("refresh_token")
+        request.session.clear()
         if not refresh_token:
-            return False
+            return True
         with next(get_session()) as session:
             token_db = session.exec(
                 select(RefreshToken).where(RefreshToken.token == refresh_token)
             ).first()
             if not token_db:
-                return False
+                return True
             session.delete(token_db)
             session.commit()
-        request.session.clear()
         return True
 
     async def authenticate(self, request: Request) -> bool:
@@ -68,7 +66,9 @@ class AdminAuth(AuthenticationBackend):
             new_access_token, new_refresh_token = refresh_tokens(refresh_token, session)
             if not new_access_token or not new_refresh_token:
                 return False
-            request.session.update({"access_token": new_access_token, "refresh_token": new_refresh_token})
+            request.session.update(
+                {"access_token": new_access_token, "refresh_token": new_refresh_token}
+            )
         return True
 
 
@@ -81,4 +81,9 @@ class UserView(ModelView, model=User):
 
 
 class RefreshTokenView(ModelView, model=RefreshToken):
-    column_list = [RefreshToken.id, RefreshToken.user_id, RefreshToken.created_at]
+    column_list = [
+        RefreshToken.id,
+        RefreshToken.user_id,
+        RefreshToken.created_at,
+        RefreshToken.expires_at,
+    ]

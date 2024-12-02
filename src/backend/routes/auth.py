@@ -24,11 +24,11 @@ def login(session: SessionDep, form_data: OAuth2PasswordRequestForm = Depends())
 
 
 @router.post("/refresh")
-def refresh(session: SessionDep, rtoken: str = Annotated[str, "refresh_token"]):
-    atoken, rtoken = refresh_tokens(rtoken, session)
+def refresh(session: SessionDep, refresh_token: str = Annotated[str, "refresh_token"]):
+    access_token, refresh_token = refresh_tokens(refresh_token, session)
     return {
-        "access_token": atoken,
-        "refresh_token": rtoken,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
     }
 
